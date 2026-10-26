@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>For you</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400;1,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#050408; --wine:#22060d; --text:#eadbd3; --soft:#b9a39a;
+  color-scheme:dark;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{
+  margin:0;height:100%;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 80%,var(--wine) 0%,var(--ink) 75%) var(--ink);
+  color:var(--text);
+  font-family:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+main{
+  position:relative;z-index:1;height:100%;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  padding:2rem 1.6rem;text-align:center;
+}
+.quote{max-width:30ch;margin:0;font-style:italic;font-weight:500;
+  font-size:clamp(1.55rem,6.2vw,2.5rem);line-height:1.38;letter-spacing:.005em;
+  text-shadow:0 2px 24px rgba(0,0,0,.9)}
+.quote span{display:block;margin-bottom:.9em;opacity:0;transform:translateY(6px);
+  animation:rise 2.6s ease forwards}
+.quote span:nth-child(1){animation-delay:1.2s}
+.quote span:nth-child(2){animation-delay:4.6s}
+.quote span:nth-child(3){animation-delay:8.2s}
+.sign{margin:1.4em 0 0;font-size:clamp(1.1rem,4vw,1.4rem);font-style:italic;color:var(--soft);
+  opacity:0;animation:rise 3s ease 12.4s forwards;text-shadow:0 2px 16px rgba(0,0,0,.9)}
+@keyframes rise{to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .quote span,.sign{animation-duration:.01s;animation-delay:0s}
+}
+</style>
+</head>
+<body>
+<canvas id="c" aria-hidden="true"></canvas>
+<main>
+  <p class="quote">
+    <span>Every single moment I spent with you, I fell deeper.</span>
+    <span>It felt like falling into an abyss, because I knew I could never find my way back.</span>
+    <span>There would be nothing to life without you anymore.</span>
+  </p>
+  <p class="sign">For you.</p>
+</main>
+<script>
+(function(){
+  var cv=document.getElementById('c'),ctx=cv.getContext('2d');
+  var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var W,H,dpr,puffs=[],sprites=[];
+  var tints=[[170,160,165],[150,140,148],[130,30,48],[100,20,38]];
+
+  function makeSprite(rgb){
+    var s=256,c=document.createElement('canvas');c.width=c.height=s;
+    var g=c.getContext('2d');
+    for(var i=0;i<9;i++){
+      var x=s/2+(Math.random()-.5)*s*.45,y=s/2+(Math.random()-.5)*s*.45;
+      var r=s*(.18+Math.random()*.22);
+      var gr=g.createRadialGradient(x,y,0,x,y,r);
+      gr.addColorStop(0,'rgba('+rgb[0]+','+rgb[1]+','+rgb[2]+',.55)');
+      gr.addColorStop(1,'rgba('+rgb[0]+','+rgb[1]+','+rgb[2]+',0)');
+      g.fillStyle=gr;g.fillRect(0,0,s,s);
+    }
+    return c;
+  }
+  function size(){
+    dpr=Math.min(window.devicePixelRatio||1,2);
+    W=window.innerWidth;H=window.innerHeight;
+    cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  function make(initial){
+    var big=Math.max(W,H);
+    var wine=Math.random()<.35;
+    return{
+      img:sprites[wine?2+((Math.random()*2)|0):(Math.random()*2)|0],
+      x:Math.random()*W,
+      y:initial?Math.random()*(H*1.2):H*(.9+Math.random()*.3),
+      r:big*(.28+Math.random()*.32),
+      vy:-(.12+Math.random()*.22), ph:Math.random()*6.28, sp:.0025+Math.random()*.004,
+      amp:.25+Math.random()*.35,
+      rot:Math.random()*6.28, vr:(Math.random()-.5)*.0016,
+      life:initial?Math.random():0, vl:.0008+Math.random()*.0010,
+      a:(wine?.20:.15)*(.7+Math.random()*.6)
+    };
+  }
+  function init(){
+    size();
+    if(!sprites.length)for(var i=0;i<tints.length;i++)sprites.push(makeSprite(tints[i]));
+    var n=Math.round(Math.min(18,Math.max(10,W/40)));
+    puffs=[];for(var j=0;j<n;j++)puffs.push(make(true));
+  }
+  function frame(){
+    ctx.clearRect(0,0,W,H);
+    for(var i=0;i<puffs.length;i++){
+      var p=puffs[i];
+      p.life+=p.vl;p.y+=p.vy;p.ph+=p.sp;
+      p.x+=Math.sin(p.ph)*p.amp;p.rot+=p.vr;
+      if(p.life>=1){puffs[i]=make(false);continue}
+      var env=Math.sin(Math.PI*p.life);
+      ctx.save();
+      ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+      ctx.globalAlpha=p.a*env;
+      ctx.drawImage(p.img,-p.r,-p.r,p.r*2,p.r*2);
+      ctx.restore();
+    }
+    if(!reduce)requestAnimationFrame(frame);
+  }
+  init();
+  if(reduce){for(var k=0;k<40;k++){}frame()}else{requestAnimationFrame(frame)}
+  window.addEventListener('resize',function(){init();if(reduce)frame()});
+})();
+</script>
+</body>
+</html>
